@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WIFI测试报告</title>
+    <script type="text/javascript" src="/js/jquery.min.js"></script>
+    <script type="text/javascript" src="/js/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/echart/echarts-all.js"></script>
+    <script type="text/javascript" src="/js/utility.js"></script>
+    <script type="text/javascript" src="/js/messagePrompt.js"></script>
+
+    <script type="text/javascript" src="/js/iframe_win.js"></script>
+    <link rel="stylesheet" href="/js/themes/bootstrap/easyui.css">
+    <link rel="stylesheet" href="/js/themes/icon.css">
+    <link rel="stylesheet" href="/css/page.css">
+
+
+<!--    <link rel="stylesheet" href="../layui/css/layui.css">-->
+<!--    <script src="../layui/layui.js"></script>-->
+
+
+    <script>
+        var businessType = undefined;
+        var tableList = undefined;
+        var uuid = undefined;
+        var criterionUuid_export = "";
+        var bw_rusize_index_arr=[];
+
+        var pic_arr = [];//杂散图片的arr 导出的时候需要用到  ，将excel和图片一起压缩成一个zip导出
+
+        window.onload = function () {
+            businessType = getUrlQueryPara('business');
+            init();
+            $(document).on('click', '.picA', function () {
+                var upload_code = $(this).attr("pic_upload_code");
+                var imgPath = $(this).attr("path");
+                var uuid = $(this).attr("uuid");
+                if (upload_code!="1"){
+                    alert("python测试用例上传图片出错,无法预览图片，请浏览本地图片");
+                    return false;
+                }
+                showPic(uuid);
+            });
+        }
+
+        function init() {
+            init_ruindex_arr();//初始化RUIndex数组
+            var url = window.location.search;
+            uuid = getUrlQueryPara("uuid");
+            getSequenceInfo(uuid);
+            getSequenceStatisticInfo(uuid);
+            getTestItemBySessionUuid(uuid, null);
+            addParaControl_combo("div_criterion", "para_criterion", "选择判据:", "/criterion/findByBusinessType", {businessType: businessType}, "uuid", "name", null, false, switchCriterion);
+        }
+
+        function generate_ru_arr(bw,rusize,ruindexstr){
+
+            bw_rusize_index_arr=[];
+              ruindex_arr=ruindexstr.split(",");
+              if (ruindex_arr!=null&&ruindex_arr!=undefined&&ruindex_arr.length>0){
+                  for(var i=0,ruindex_len=ruindex_arr.length;i<ruindex_len;i++){
+                      rusize_obj=new Object();
+                      rusize_obj.bw=bw;
+                      rusize_obj.rusize=rusize;
+                      rusize_obj.ruindex=ruindex_arr[i];
+                      bw_rusize_index_arr.push(rusize_obj);
+                      rusize_obj=undefined;
+                  }
+              }
+              return bw_rusize_index_arr;
+        }
+        //初始化ruindex数组
+        function init_ruindex_arr(){
+            var bw_rusize_index_arr = [];
+            var rusize_obj=new Object();
+            var bw_arr = ['20','40','80','160'];
+            var rusize_arr = ['26','52','106','242','484']
+
+            for(var i=0,bw_len=bw_arr.length;i<bw_len;i++){
+                var bw = bw_arr[i];
+                for(var j=0,rusize_len=rusize_arr.length;j<rusize_len;j++){
+                    var rusize = rusize_arr[j];
+                    ruIndexStr ="";
+                    switch (bw) {
+                        case '20':
+                            switch (rusize) {//rusize
+                                case '26'://
+                                    ruIndexStr = '0,4,8';
+                                    break;
+                                case '52':
+                                    ruIndexStr = '37,40';
+
+                                    break;
+                                case '106':
+                                    ruIndexStr = '53,54';
+                                    break;
+                                case '242':
+                                    ruIndexStr += '61';
+                                    break;
+                                case '484'://484暂时不测
+                                    break;
+                            }
+                            break;
+                        case '40':
+                            switch (rusize) {//rusize
+                                case '26'://
+                                    ruIndexStr = '0,8,9,17';
+                                    break;
+                                case '52':
+                                    ruIndexStr = '37,40,41,44';
+                                    break;
+                                case '106':
+                                    ruIndexStr = '53,56';
+                                    break;
+                                case '242':
+                                    ruIndexStr = '61,62';
+                                    break;
+                                case '484'://484暂时不测
+                                    break;
+                            }
+                            break;
+                        case '80':
+                            switch (rusize) {//rusize
+                                case '26'://
+                                    ruIndexStr = '0,18,19,36';
+                                    break;
+                                case '52':
+                                    ruIndexStr = '37,44,45,52';
+                                    break;
+                                case '106':
+                                    ruIndexStr = '53,56,57,60';
+                                    break;
+                                case '242':
+                                    ruIndexStr = '61,64';
+                                    break;
+                                case '484'://484暂时不测
+                                    break;
+                            }
+                            break;
+                        case '160':
+                            switch (rusize) {//rusize
+                                case '26'://
+                                    ruIndexStr = '0,18,19,36';
+                                    break;
+                                case '52':
+                                    ruIndexStr = '37,44,45,52';
+                                    break;
+                                case '106':
+                                    ruIndexStr = '53,56,57,60';
+                                    break;
+                                case '242':
+                                    ruIndexStr = '61,64';
+                                    break;
+                                case '484'://484暂时不测
+                                    break;
+                            }
+                            break;
+                    }
+                    sub_ru_arr=generate_ru_arr(bw,rusize,ruIndexStr);
+
+                    sub_ru_arr.length>0&&(bw_rusize_index_arr=[].concat(bw_rusize_index_arr,sub_ru_arr))
+                }
+            }
+
+            return bw_rusize_index_arr;
+        }
+
+        function getSequenceInfo(uuid) {
+            ajaxRequest("/Sequence/getSequenceInfo", {"uuid": uuid}, function (result) {
+                if (result.success == true) {
+                    var data = result.data;
+                    var html = "<table style='width: 50%' border='1px' width='100%'>";
+                    var dutName = data["dutName"];
+                    var testcaseName = data["testcaseName"];
+                    var startTime = data["startTime"];
+                    var updateTime = data["updateTime"];
+                    var duringTime = data["duringTime"];
+                    var progress = data["progress"];
+                    var user = data["user"];
+                    var testcaseNames = testcaseName.split(",");
+                    for (var i = 0; i < testcaseNames.length; i++) {
+                        if (i == 0) {
+                            html += "<tr ><td columnspan='14'>用例名称</td><td>" + testcaseNames[i] + "</td></tr>";
+                        } else {
+                            html += "<tr ><td></td><td>" + testcaseNames[i] + "</td></tr>";
+                        }
+                    }
+
+                    html +=
+                        "<tr ><td>Dut名称</td><td>" + dutName + "</td></tr>" +
+                        "<tr ><td>测试人员</td><td>" + user + "</td></tr>" +
+                        "<tr ><td>开始时间</td><td>" + startTime + "</td></tr>" +
+                        "<tr ><td>最后更新时间</td><td>" + updateTime + "</td></tr>" +
+                        "<tr ><td>持续时间</td><td>" + duringTime + " 小时</td></tr>" +
+                        "<tr ><td>测试完成度</td><td>" + progress + "</td></tr>" +
+                        "<tr ><td>序列ID</td><td>" + uuid + "</td></tr>";
+                    html += "</table>";
+                    $("#sequenceinfo").html(html);
+                }
+            }, true);
+        }
+
+        function getSequenceStatisticInfo(uuid) {
+            $("#sequencestatisticinfo").html("");
+            ajaxRequest("/Sequence/getSequenceStatisticInfo", {"uuid": uuid}, function (result) {
+                if (result.success == true) {
+                    var data = result.data;
+                    var legend = new Array();
+                    var plotData1 = new Array();
+                    var plotData2 = new Array();
+                    var plotData3 = new Array();
+                    for (var key in data) {
+                        legend.push(key);
+                        var plotSubData1 = new Object();
+                        plotSubData1['value'] = data[key].executeTimeHour;
+                        plotSubData1['name'] = key;
+                        plotData1.push(plotSubData1);
+                        var plotSubData2 = new Object();
+                        plotSubData2['name'] = key;
+                        plotSubData2['value'] = data[key].testChipCount;
+                        plotData2.push(plotSubData2);
+                        plotData3.push(data[key].averageTime);
+                    }
+                    var height = $('#sequenceinfo').height();
+                    if (height > 300) {
+                        height = height;
+                    } else {
+                        height = 300;
+                    }
+                    $('#sequencestatisticinfo1').height(height);
+                    $('#sequencestatisticinfo2').height(height);
+                    $('#sequencestatisticinfo3').height(height);
+                    plotPieChart('sequencestatisticinfo1', '用例执行时间统计（小时）', legend, plotData1);
+                    plotPieChart('sequencestatisticinfo2', '用例测试点数量', legend, plotData2);
+                    plotBarChart('sequencestatisticinfo3', '测试点平均执行时间（分钟）', '123', legend, plotData3);
+
+                }
+            }, true);
+        }
+
+
+        function onclickCreateTestReport() {
+            var url = "/createtestreport/createtestreport.html?business=" + businessType;
+            window.open(url);
+        }
+
+        function onclickExportTestReport() {
+            window.location.href = "/TestReport/exportTable?uuid=" + uuid + "&businessType=" + businessType + "&criterionUuid_export=" + criterionUuid_export;
+        }
+
+        function getTestItemBySessionUuid(uuid, criterionUuid) {//获取测试项  testItem
+            $("#testdata").html("");
+            promptLoadInfo("正在生成报告...");
+            ajaxRequest("/TestChip/getTestItemBySessionUuid", {"uuid": uuid, "protocol": ""}, function (result) {
+                var data = result;
+                tableList = result;
+                br_testitem = result;
+                $("#testdata").html('');
+                for (var i = 0; i < data.length; i++) {
+                    var subtitle = replaceBlank(data[i])
+                    var html = "<div class='block-title'>" + "WIFI " + data[i] + "</div>" +
+                        "<div class='block-body' id='panel_" + subtitle + "'></div>" +
+                        "<div class='block-body' id='panel_plot_" + subtitle + "' style='max-width: 1500px'></div>";
+                    $("#testdata").append(html);
+                }
+            }, false);
+            ajaxRequest("/TestChip/getTestChipAndTestDataBySessionUuid", {
+                "uuid": uuid,
+                "criterionUuid": criterionUuid
+            }, function (result) {
+                var data = result;
+                var html = "";
+
+                ajaxRequest("/TestReport/getTableList", {"businessType": businessType}, function (result) {
+
+                    var table_data = result.data;
+                    for (var j = 0; j < table_data.length; j++) {
+                        var data_ele = table_data[j];
+                        if (isInArr(tableList, data_ele.tablename)) {
+                            var testitem = data_ele.tablename;
+                            html = buildNr5gTable(data, testitem, $.parseJSON(data_ele.columns), "");
+                            $("#panel_" + replaceBlank(testitem)).html(html);
+
+                        }
+                    }
+                });
+
+                closePromptInfo();
+            }, true);
+
+        }
+
+        function isInArr(arr, ele) {
+            var flag = false;
+            if (arr != undefined && arr.length > 0) {
+                arr.forEach(function (v) {
+                    if (v == ele) {
+                        flag = true;
+                    }
+                })
+            }
+            return flag;
+        }
+
+        function buildNr5gTable(data, testitem, columns, protocol) {
+
+            var html = "<table style='min-width: 1000px'>";
+            html += "<tr>";
+            for (var j = 0; j < columns.length; j++) {//thead
+
+                html += "<th>" + columns[j].title + "</th>";
+            }
+            html += "</tr>";
+
+            for (var i = 0; i < data.length; i++) {
+                var testchip = data[i].testchip;
+                var testconfig = testchip.testConfig;
+                var testdata = data[i].data;
+                var judgeResult = data[i].judgeResult;
+                var test_item = data[i].testchip.testItem;
+
+
+                if (testitem == test_item && testconfig.indexOf(protocol) > -1) {
+
+                    html += "<tr>";
+                    for (var j = 0; j < columns.length; j++) {
+                        if (columns[j].field == "result") {
+                            if (judgeResult == undefined) {
+                                html += "<td>" + "" + "</td>";
+                                continue;
+                            }
+                            var value = judgeResult["result"];
+                            if (value == "RESULT_NA") {
+                                html += "<td>" + judgeResult["result"] + "</td>";
+                            } else if (value == "RESULT_ERROR") {
+                                html += "<td style='background-color: #eeee00'>" + judgeResult["result"] + "</td>";
+                            } else if (value == "RESULT_PASS") {
+                                html += "<td style='background-color: #00ee00'>" + judgeResult["result"] + "</td>";
+                            } else if (value == "RESULT_FAIL") {
+                                html += "<td style='background-color: #ff0000'>" + judgeResult["message"] + "</td>";
+                            } else {
+                                html += "<td>" + judgeResult["message"] + "</td>";
+                            }
+                            continue;
+                        }
+
+                        if (columns[j].dataContainer == "MeasureConfig") {
+                            dataContainer = MeasureConfig;
+                        } else if (columns[j].dataContainer == "testChip") {
+                            dataContainer = data[i].testchip;
+                        } else if (columns[j].dataContainer == "testData") {
+                            dataContainer = testdata;
+                        } else if (columns[j].dataContainer == "createTime") {
+                            dataContainer = testdata;
+                        } else {
+                            dataContainer = null;
+                        }
+                        var value = "";
+                        if (dataContainer == null) {
+                            value = columns[j].default == undefined?"": columns[j].default;
+                        } else {
+                            if (columns[j].dataContainer == "testData") {
+                                if (dataContainer==null){
+                                    _testdata=null
+                                }else{
+                                    _testdata =typeof dataContainer.content=="object"?dataContainer.content:JSON.parse(dataContainer.content);
+                                }
+
+                                if (_testdata == null) {
+                                    value = "";
+                                } else {
+
+                                    var column = columns[j].field.replace(/(\s*$)/g, "");
+                                    value = _testdata[column];
+
+                                    if (Object.prototype.toString.call(value) == '[object Array]'&&column=='pic_arr' ) {//pic_arr请勿修改，python端返回的key就是这个，写死了
+                                        valuestr = "";
+                                        $.each(value, function (i, o) {
+
+                                            //o.picpath 数据格式 :"\\10.143.96.33\NF-Report\CE\WIFI\Basic\shotFiles\CE_WiFi_2G_TX_Spectral_Emissions_Test\ANTCore0_SISO_CH1_MCS0\30MHz-1000MHz_PASS.JPG"
+                                            picpath = o.picpath.substring(o.picpath.lastIndexOf("\\") + 1, o.picpath.length);
+                                            pic_arr.push(o.picpath);
+                                            var pic_upload_code = undefined;
+                                            var uuid = undefined;
+                                            if (o.pic_upload_result!="上传失败"){
+                                                pic_upload_code = o.pic_upload_result.code;
+                                                uuid = o.pic_upload_result.data.uuid
+                                            }
+
+                                            picpathA = "<a class='picA' path='" + o.picpath + "' uuid='"+uuid+"' pic_upload_code='"+pic_upload_code+"'>" + picpath + "</a>";
+                                            if ( o.passFlag!=undefined&&o.passFlag!=null){
+                                                valuestr += ("<U><div class='periodDiv'>" + o.periodFlag + "</div>  :  <div class='passDiv'>" + o.passFlag + "</div>  : <div class='imgDiv'> " + picpathA + "</div></U><br>");
+                                            }else{
+                                                valuestr += ("<U><div class='periodDiv'>" + o.periodflag + "</div> <div class='imgDiv'> " + picpathA + "</div></U><br>");
+                                            }
+                                        });
+                                        value = valuestr;
+
+                                    }
+                                    if( (value!=undefined&&value!=null)&& (value == '-999.99' || ((((column.indexOf('result')!=-1)||(column.toLowerCase().indexOf('flag')!=-1))&&value.toLowerCase()!="pass")))) {//TODO
+                                        columns[j].red = true
+                                    }
+                                }
+
+                            } else if (columns[j].dataContainer == "createTime") {
+                                value = testdata.createdTime;
+                            } else if (columns[j].dataContainer == "testChip") {
+                                value = dataContainer[columns[j].field];
+
+                                if (value == undefined || value == null) {
+                                    var _testdata = JSON.parse(dataContainer.testConfig);
+                                    if (_testdata == null) {
+                                        value = "";
+                                    } else {
+                                        var column = columns[j].field.replace(/(\s*$)/g, "");
+                                        value = _testdata[column];
+                                    }
+                                }
+
+                            } else {
+                                value = dataContainer[columns[j].field];
+                            }
+
+                        }
+                        if (value == undefined || value == null) {
+                            value = ""
+                        }
+                        if (columns[j].red) {
+                            html += "<td><font size='3' color='red'>" + value + "</font></td>";
+                            columns[j].red = false;//
+                        } else {
+                            console.log(columns[j].red)
+                            html += "<td>" + value + "</td>";
+                        }
+                    }
+                    html += "</tr>";
+                }
+            }
+            html += "</table>";
+            return html;
+        }
+
+        function showPic(uuid){
+
+            open_iframe_win('序列图片','/wifi/my_picture.html?uuid='+uuid,'75%','70%');
+
+        }
+        function getPlotData(data, testitem, filter, keyName, valueName) {
+
+            var xaxis = new Array();
+            var dataSerial = new Array();
+            for (var i = 0; i < data.length; i++) {
+                var testchip = data[i].testchip;
+                var test_item = testchip.testItem;
+                if (test_item != testitem) {
+                    continue;
+                }
+                var testconfig = testchip.testConfig;
+                if (data[i].data == undefined) {
+                    continue;
+                }
+                var testdata = JSON.parse(data[i].data.content);
+                var judgeResult = data[i].judgeResult;
+                if (test_item == testitem && testconfig.indexOf(filter) > -1) {
+                    var NrConfig = JSON.parse(testconfig)["NrConfig"][0];
+                    xaxis.push(NrConfig[keyName]);
+                    if (testdata == null) {
+                        dataSerial.push(0);
+                    } else {
+                        dataSerial.push(testdata[valueName]);
+                    }
+                }
+            }
+
+            return {xaxis: xaxis, dataSerial: dataSerial};
+        }
+
+        function getTestItemData(uuid, testitem, columns) {
+
+            ajaxRequest("Data/getTestDataByTestItem", {"uuid": uuid, "testitem": testitem,}, function (result) {
+                if (result.success == true) {
+                    var data = result.data;
+                    var html = "<table>";
+                    html += "<tr>";
+                    for (var i = 0; i < columns.length; i++) {
+                        html += "<th>" + columns[i].title + "</th>";
+                    }
+                    html += "</tr>";
+
+                    for (var i = 0; i < data.length; i++) {
+                        html += "<tr>";
+                        for (var j = 0; j < columns.length; j++) {
+                            html += "<tr ><td>" + data[i][columns[j]] + "</td>";
+                        }
+                        html += "</tr>";
+                    }
+
+                    html += "</table>";
+                }
+            }, false);
+        }
+
+        function replaceBlank(str) {
+            var str = str_replace(str, " ", "_");
+            str = str_replace(str, "\\.", "_");
+            str = str_replace(str, "/", "_");
+            str = str_replace(str, "\\(", "_");
+            str = str_replace(str, "\\)", "_");
+            return str;
+        }
+
+        function plotBarChart(plotdivid, title, legend, xAxis, data) {
+            var myChart = echarts.init(document.getElementById(plotdivid));
+            option = {
+                title: {
+                    text: title,
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: legend
+                },
+                calculable: true,
+                xAxis: [
+                    {
+                        data: xAxis,
+                        axisLabel: {
+                            interval: 0,
+                            rotate: -30
+                        }
+                    }
+                ],
+                yAxis: [
+                    {
+                        type: 'value'
+                    }
+                ],
+                series: [
+                    {
+                        name: legend[0],
+                        type: 'bar',
+                        barWidth: 10,
+                        data: data,
+                        color: ['#00ff00', '#759aa0', '#e69d87', '#8dc1a9', '#94deea', '#eedd78', '#73a373', '#73b9bc', '#7289ab', '#91ca8c', '#f49f42'],
+                        // markPoint : {
+                        //     data : [
+                        //         {type : 'max', name: '最大值'},
+                        //         {type : 'min', name: '最小值'}
+                        //     ]
+                        // },
+                    }
+                ]
+            };
+
+            myChart.setOption(option);
+        }
+
+        function plotLineChart(title, legend, xAxis, data) {
+            var myChart = echarts.init(document.getElementById('mychart'));
+            option = {
+                title: {
+                    text: title,
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    //data:['蒸发量','降水量']
+                    data: legend
+                },
+                calculable: true,
+                xAxis: [
+                    {
+                        //type : 'category',
+                        data: xAxis
+                    }
+                ],
+                yAxis: [
+                    {
+                        type: 'value'
+                    }
+                ],
+                series: [
+                    {
+                        name: legend[0],
+                        type: 'bar',
+                        barWidth: 10,
+                        data: data,
+                        markPoint: {
+                            data: [
+                                {type: 'max', name: '最大值'},
+                                {type: 'min', name: '最小值'}
+                            ]
+                        },
+                    }
+                ]
+            };
+
+            myChart.setOption(option);
+        }
+
+        function plotPieChart(plotdivid, title, legend, data) {
+            var myChart = echarts.init(document.getElementById(plotdivid));
+
+            option = {
+                title: {
+                    text: title,
+                    x: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: "{c} ({d}%)"
+                },
+                legend: {
+                    orient: 'vertical',
+                    x: 'left',
+                    data: legend
+                },
+
+                calculable: true,
+                series: [
+                    {
+                        //name:'访问来源',
+                        type: 'pie',
+                        radius: '55%',
+                        center: ['50%', '60%'],
+                        data: data
+                    }
+                ]
+            };
+
+
+            myChart.setOption(option);
+        }
+
+        // function clickPic(obj){
+        //     $(obj).dialog('open');
+        //     // alert($(obj).attr("path"))
+        // }
+        function switchCriterion(val) {
+            var url = window.location.search;
+            var uuid = getUrlQueryPara("uuid");
+            getSequenceInfo(uuid);
+            var criterionUuid = $('#para_criterion').combobox('getValue');
+            criterionUuid_export = criterionUuid;
+            getTestItemBySessionUuid(uuid, criterionUuid);
+        }
+    </script>
+
+    <style type="text/css">
+        body {
+            font-family: "微软雅黑", "Tahoma";
+        }
+
+        .block-title {
+            border-width: 0px;
+            border-left: 5px;
+            border-style: solid;
+            border-color: deepskyblue;
+            margin: 5px;
+            margin-top: 20px;
+            padding-left: 10px;
+            font-size: 24px;
+        }
+
+        .block-body {
+            border-width: 0px;
+            border-style: dashed;
+            border-color: deepskyblue;
+            margin: 5px;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        table {
+            border-style: solid;
+            border-width: 1px;
+            cellspacing: 0;
+            border-collapse: collapse
+        }
+
+        td, th {
+            border-style: solid;
+            border-width: 1px;
+            text-align: left;
+            font-size: 12px;
+            padding: 2px;
+            padding-left: 5px;
+            padding-right: 5px;
+            min-width: 50px;
+            cellspacing: 0;
+        }
+
+        .line {
+            margin: 10px;
+            background-color: deepskyblue;
+            min-height: 2px;
+            display: block;
+            width: 95%;
+        }
+
+        .picA {
+            color: blue;
+            cursor: pointer;
+
+        }
+
+        .periodDiv, .passDiv, .imgDiv {
+            display: inline-block;
+
+        }
+    </style>
+
+</head>
+<body>
+<h1 style="text-align: center;">WIFI 测试报告</h1>
+<div class="line">
+    <div style="float: right;">
+        <button onclick="onclickCreateTestReport()">编辑报告模板</button>
+        <button onclick="onclickExportTestReport()">导出报告</button>
+    </div>
+</div>
+<div class="block-title">测试概览</div>
+<div class="block-body">
+    <div id="sequenceinfo" style="width: 48%;float: left"></div>
+    <div id="sequencestatisticinfo1" style="width: 48%;float: left"></div>
+    <div style="clear: both;"></div>
+</div>
+<div class="block-body">
+    <div id="sequencestatisticinfo2" style="width: 48%;float: left"></div>
+    <div id="sequencestatisticinfo3" style="width: 48%;float: left"></div>
+    <div style="clear: both;"></div>
+</div>
+<div id="div_criterion" style="width: 500px;"></div>
+<div class="block-body" id="testdata"></div>
+
+</body>
+</html>
+

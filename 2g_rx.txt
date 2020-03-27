@@ -1,0 +1,222 @@
+def CE_2G_Rx_Blocking_Network_Test_ax(case_name, test_rf_port, test_mode, test_channel, test_datarate,
+                                      test_target_power, test_rf_gain, test_beforeming_gain, comp_path_loss,
+                                      sin_path_loss, report_path, dutControlConsle):
+    try:
+        # 初始变量
+        excel_list = []
+        json_list = []
+        report_dict = {}
+        error_excel = [test_rf_port, test_mode, test_channel, test_datarate, 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA',
+                       'NA', 'NA', 'NA', 'NA', 'FAIL']
+        error_json = {case_name: {"value": '--', "RESULT": "FAIL"}}
+        per_value = 100
+        COMP.ComprehensiveAW.setCmwReset()
+        time.sleep(3)
+
+        # 第1步：获取样机测试参数
+        # 获取根据信道频率
+        test_center_fre = CommonFunction.getWifiCenterFre(test_channel)
+
+        # 获取综测仪线损
+        test_comp_offset = float(CommonFunction.Get_IEEE_Spec_Offset(comp_path_loss, test_channel))
+
+        test_limit_dict = CommonFunction.Get_Wifi_Test_Limit_Dict(test_mode, test_datarate,
+                                                                  limit_file_path=Path.nf_test_limit_table_path_ax)
+
+        # 第2步：CMW500 初始化为RX模式
+        stanType = getWIFIstanType_ax(test_mode)
+        bandwidth = WIFI_IEEE_CMWAW.getWIFIstanBandwith(test_mode)
+
+        # 配置端口                   rfxc, rx, rfxxc, tx, rfOutAtt, rfInAtt, target_power):
+        initResult = initialDevice_ax("RF1C", "RX1", "RF1C", "TX1", test_comp_offset, test_comp_offset,
+                                      test_target_power)
+
+        signalMode = "Rx"
+
+        eutSignal = setEUTSignal_ax(stanType, bandwidth, test_channel, [], signalMode, test_datarate, test_rf_port,
+                                    testType="SISO", ruSize=0)
+
+        set_cmw_Rate = getCMW500SetWifiRateListNetwork_ForRx_ax(test_mode, test_datarate)
+
+        # 第3步：灵敏度测试
+        LogPrint.PRINTI(
+            "-------------------------------------------------------------------------------------------------------------")
+        LogPrint.PRINTI(
+            "                                    CMW500信令 灵敏度测试                                                     ")
+        LogPrint.PRINTI(
+            "TestAnt={} TestMode={} TestChannel={} TestDatarate={}".format(test_rf_port, test_mode, test_channel,
+                                                                           test_datarate))
+        LogPrint.PRINTI(
+            "-------------------------------------------------------------------------------------------------------------")
+
+        test_end_flag, receive_sensity, per_data = False, 100, 100
+        start_rf_test_level = int(test_limit_dict["receive_sense"])
+        stop_rf_test_level = -100
+        check_per_value = 8 if "11b" in test_mode else 10
+        step_down = 2
+
+        # 预测试一次
+        # 读取WIFI 连接状态，如果未连接成功重新进行一次连接
+        wlanSignSta = COMP.ComprehensiveAW.queryCMWWLANSignSta()
+        if "ON,ADJ" == wlanSignSta:
+            pass
+        else:
+            # WIFI_IEEE_CMWAW.setEUTSignal(stanType, bandwidth, test_channel, [], signalMode)
+            setEUTSignal_ax(stanType, bandwidth, test_channel, test_datarate, test_rf_port, "SISO", 0)
+        payloadsize = 1000  # 发射包的大小
+        packets = 1000  # 发射包的个数
+        allRxResult = getWifiRxResult_network_ax(test_mode, set_cmw_Rate, start_rf_test_level, packets, payloadsize)
+        # 正式开始测试
+        for rf_level in range(start_rf_test_level, stop_rf_test_level - step_down, -step_down):
+            # 读取WIFI 连接状态，如果未连接成功重新进行一次连接
+            wlanSignSta = COMP.ComprehensiveAW.queryCMWWLANSignSta()
+            if "ON,ADJ" == wlanSignSta:
+                pass
+            else:
+                # WIFI_IEEE_CMWAW.setEUTSignal(stanType, bandwidth, test_channel, [], signalMode)11-28
+                setEUTSignal_ax(stanType, bandwidth, test_channel, test_datarate, test_rf_port, "SISO", 0)
+            payloadsize = 1000  # 发射包的大小
+            packets = 1000  # 发射包的个数
+
+            allRxResult = getWifiRxResult_network_ax(test_mode, set_cmw_Rate, rf_level, packets, payloadsize)
+            if allRxResult[-1] == "INV":
+                LogPrint.PRINTF("DUT 不支持当前速率或者已失去连接")
+                receive_sensity, per_data = rf_level + step_down if rf_level + step_down <= start_rf_test_level else start_rf_test_level, per_value
+                break
+            else:
+                per_value = allRxResult[0] * 100
+
+            LogPrint.PRINTI(
+                "灵敏度下探（步进2dB）：TestMode={test_mode} TestChannel={test_channel} Test_Offset={test_comp_offset} TestDatarate={test_datarate} Package Count=1000 rfPower={rf_level} Per={per}%".format(
+                    test_mode=test_mode,
+                    test_channel=test_channel,
+                    test_datarate=test_datarate,
+                    rf_level=rf_level,
+                    test_comp_offset=test_comp_offset,
+                    per=per_value))
+            test_ok_flag = False
+
+            # 如果一开始per_value 就大于 check_per_value，直接退出下探循环
+            if rf_level >= start_rf_test_level and per_value > check_per_value:
+                receive_sensity = start_rf_test_level
+                per_data = per_value
+                break
+
+            if per_value > check_per_value:
+                back_end = rf_level + 40
+                for back_rf_power in CommonFunction.float_range(rf_level, back_end, 0.5):
+                    # 读取WIFI 连接状态，如果未连接成功重新进行一次连接
+                    wlanSignSta = COMP.ComprehensiveAW.queryCMWWLANSignSta()
+                    if "ON,ADJ" == wlanSignSta:
+                        pass
+                    else:
+                        # WIFI_IEEE_CMWAW.setEUTSignal(stanType, bandwidth, test_channel, [], signalMode)
+                        setEUTSignal_ax(stanType, bandwidth, test_channel, test_datarate, test_rf_port, "SISO", 0)
+                    # allRxResult = WIFI_IEEE_CMWAW.getWifiRxResult_network(test_mode, set_cmw_Rate, back_rf_power,
+                    #                                                       packets, payloadsize)
+                    allRxResult = getWifiRxResult_network_ax(test_mode, set_cmw_Rate, back_rf_power, packets,
+                                                             payloadsize)
+                    if allRxResult[-1] == "INV":
+                        LogPrint.PRINTF("DUT 不支持当前速率或者已失去连接")
+                        receive_sensity, per_data = rf_level + step_down if rf_level + step_down <= start_rf_test_level else start_rf_test_level, per_value
+
+                        break
+                    else:
+                        per_value = allRxResult[0] * 100
+                    LogPrint.PRINTI(
+                        "灵敏度回退（步进0.5dB）：TestMode={test_mode} TestChannel={test_channel} Test_Offset={test_comp_offset} TestDatarate={test_datarate} Package Count=1000 rfPower={rf_level} Per={per}%".format(
+                            test_mode=test_mode,
+                            test_channel=test_channel,
+                            test_datarate=test_datarate,
+                            rf_level=back_rf_power,
+                            test_comp_offset=test_comp_offset,
+                            per=per_value))
+                    if per_value <= check_per_value:
+                        test_ok_flag, receive_sensity, per_data = True, back_rf_power, per_value
+                        break
+                else:
+                    test_ok_flag, receive_sensity = True, back_end
+                    break
+            else:
+                # 记录当前per_value
+                per_data = per_value
+            if test_ok_flag:
+                break
+        else:
+            # 达到stop_rf_test_level,per_value 依然小于 check_per_value的情况，receive_sensity赋值为stop_rf_test_level
+            receive_sensity, per_data = stop_rf_test_level, per_value
+        test_result = "PASS" if receive_sensity <= start_rf_test_level and per_data <= check_per_value else "FAIL"
+        LogPrint.PRINTI(
+            "灵敏度测试结果： TestMode={test_mode} TestChannel={test_channel} TestDatarate={test_datarate} Receive_sensity={rx_sens} Per_Value={per}% Result={test_result}".format(
+                test_mode=test_mode,
+                test_channel=test_channel,
+                test_datarate=test_datarate,
+                rx_sens=receive_sensity, per=per_data, test_result=test_result))
+
+        # LogPrint.PRINTF("-------------------------------------------------------------")
+        # LogPrint.PRINTF("灵敏度测试成功进入阻塞用例测试")
+        # LogPrint.PRINTF("-------------------------------------------------------------")
+        # 2.4g 阻塞信号频点
+        blocking_signal_fre_list = [2380, 2503.5, 2300, 2330, 2360, 2523.5, 2553.5, 2583.5, 2613.5, 2643.5, 2673.5]
+        blocking_signal_power_level_list = [-53, -53, -47, -47, -47, -47, -47, -47, -47, -47, -47]
+        blocking_signal_path_loss_list = [float(sin_path_loss[0]) for fre in blocking_signal_fre_list]
+        for fre, power_level, path_loss in zip(blocking_signal_fre_list, blocking_signal_power_level_list,
+                                               blocking_signal_path_loss_list):
+            # 灵敏度测试成功进入阻塞用例测试
+            if test_result == "PASS":
+                # 发射阻塞信号
+                CommonFunction.setCWSignal(fre * 1e6, power_level, path_loss)
+                # 阻塞比较电平
+                block_sensitivity = receive_sensity + 6
+                # 控制仪表发包且查询是否发送完毕
+                wlanSignSta = COMP.ComprehensiveAW.queryCMWWLANSignSta()
+                if "ON,ADJ" == wlanSignSta:
+                    pass
+                else:
+                    # WIFI_IEEE_CMWAW.setEUTSignal(stanType, bandwidth, test_channel, [], signalMode)
+                    setEUTSignal_ax(stanType, bandwidth, test_channel, [], signalMode)
+                payloadsize = 1000  # 发射包的大小
+                packets = 1000  # 发射包的个数
+
+                # allRxResult = WIFI_IEEE_CMWAW.getWifiRxResult_network(test_mode, set_cmw_Rate, block_sensitivity,
+                #                                                       packets, payloadsize)
+                allRxResult = getWifiRxResult_network_ax(test_mode, set_cmw_Rate, block_sensitivity, packets,
+                                                         payloadsize)
+                if allRxResult[-1] == "INV":
+                    LogPrint.PRINTF("DUT 不支持当前速率或者已失去连接")
+                    continue
+                else:
+                    block_per_value = allRxResult[0] * 100
+                # 读取收包个数并计算Per值
+                LogPrint.PRINTF("------------------------------------------------------------")
+                LogPrint.PRINTF("阻塞测试结果 Test Ant:{} Test Mode:{} Test Channel:{} Test Datarate:{}\n"
+                                "Block signal Freq:{}Mhz Block signal Power:{}dBm Block signal Sensitivity:{}dB Block signal per:{}%".format(
+                    test_rf_port, test_mode, test_channel, test_datarate, fre, power_level, block_sensitivity,
+                    block_per_value))
+                LogPrint.PRINTF("------------------------------------------------------------")
+                check_per_value = 8 if test_mode.lower() == "11b" else 10
+                block_per_result = "PASS" if block_per_value <= check_per_value else "FAIL"
+                excel_list.append([test_rf_port, test_mode, test_channel, test_datarate, 1000, start_rf_test_level,
+                                   stop_rf_test_level, receive_sensity, per_data, check_per_value,
+                                   fre, power_level, block_sensitivity, block_per_value, 6, block_per_result])
+                json_list.append({"CUTFREQ_CW": fre, "GEN_LEVEL_CW": power_level,
+                                  'ITEM_NAME': 'CUTFREQ_CW:{} GEN_LEVEL_CW:{}'.format(fre, power_level),
+                                  'value': block_per_value,
+                                  'limitmax': check_per_value, 'limitmin': '--', 'RESULT': block_per_result})
+            else:
+                excel_list.append([test_rf_port, test_mode, test_channel, test_datarate, 1000, start_rf_test_level,
+                                   stop_rf_test_level, receive_sensity, per_data, check_per_value,
+                                   fre, power_level, '--', '--', 6, 'FAIL'])
+                json_list.append({"CUTFREQ_CW": fre, "GEN_LEVEL_CW": power_level,
+                                  'ITEM_NAME': 'Blocking Per(CUTFREQ_CW:{} GEN_LEVEL_CW:{})'.format(fre, power_level),
+                                  'value': '--',
+                                  'limitmax': check_per_value, 'limitmin': '--', 'RESULT': 'FAIL'})
+
+        report_dict["json"] = {case_name: json_list}
+        report_dict["excel"] = excel_list
+    except Exception as e:
+        LogPrint.PRINT_TRACEBACK()
+        report_dict["json"] = error_json
+        report_dict["excel"] = error_excel
+    finally:
+        SIGNAL.SignalAW.setSmuRFOutputState("0")

@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/web/thymeleaf/layout">
+<head th:replace="base/index_base :: allHead(~{::title},~{::link},~{::style})">
+    <meta charset="UTF-8">
+    <title>WIFI用例配置</title>
+    <style>
+        .sm {
+            width: 30%;
+            margin: 5px;
+            height: auto;
+            float: left;
+        }
+
+        .md {
+            width: 40%;
+            margin: 5px;
+            height: auto;
+            float: left;
+        }
+
+        .lg {
+            width: 900px;
+            margin: 10px;
+            height: auto;
+        }
+
+        .block-title {
+            background: transparent;
+            border-bottom: solid 1px deepskyblue;
+            border-left: none;
+            font-weight: bold;
+            font-size: 18px;
+            padding-left: 0px;
+        }
+    </style>
+</head>
+<body>
+<script type="text/javascript">
+    Vue.component('vselector', {
+        props: {
+            id: String,
+            label: String,
+            size: String,
+            options: Array,
+            value:String,
+            callback: Function
+        },
+        data: function () {
+            return {
+                id: "",
+                label: "",
+                size: "",
+                options: [],
+                value:"",
+                callback: null
+            }
+        },
+        mounted: function () {
+            var w = 300;
+            if (this.size == 'sm') {
+                w = 300;
+            } else if (this.size == 'md') {
+                w = 600;
+            } else if (this.size == 'lg') {
+                w = 900;
+            }
+            $('#' + this.id).combobox({
+                width: w
+            });
+            if (this.callback != undefined) {
+                $('#' + this.id).combobox({
+                    onChange: this.callback
+                })
+            }
+        },
+        methods: {},
+        computed: {
+            optionList: function () {
+                var list = this.options.split(',');
+                return list;
+            }
+        },
+        template: '#tmp_select'
+    })
+    Vue.component('vinput',{
+        props: ['id', 'label', 'size', 'value'],
+        data: function () {
+            return {
+                id: "",
+                label: "",
+                size: "",
+                value: "",
+                callback: null
+            }
+        },
+        mounted: function () {
+            console.log("vinput mounted=================")
+            var w = 300;
+            if (this.size == 'sm') {
+                w = 300;
+            } else if (this.size == 'md') {
+                w = 600;
+            } else if (this.size == 'lg') {
+                w = 900;
+            }
+            $('#' + this.id).textbox({
+                width: w
+            }); //
+        },
+        template: '#tmp_input'
+    })
+</script>
+<!--参数模板-->
+<template id="tmp_select">
+    <div :class="size">
+        <select :id="id" class="easyui-combobox" :label="label"   labelWidth="100px" panelHeight="auto"
+                style="width: 90%" >
+            <option v-for="(item ,i) in optionList" :value="item" >{{item}}</option>
+        </select>
+    </div>
+</template>
+
+<template id="tmp_input">
+    <div :class="size">
+        <input :id="id" class="easyui-textbox" :label="label" :value="value" labelWidth="120px" panelHeight="auto"
+               style="width: 90%">
+
+        </input>
+    </div>
+</template>
+
+<!--界面-->
+<div id="app" style="">
+    <div v-if="showtype=='create'">
+       created
+    </div>
+    <div v-if="showtype=='edit'">
+        <div class="container-fluid data-item-contain">
+            <div>
+                <div style="width: 400px;margin: 10px;height: auto;float:left;">
+                    <select id="wifi_businesstype" class="easyui-combobox params_class" label="WIFI业务类型" labelWidth="120px" v-model="wifi_businesstype"
+                            panelHeight="auto" :onChange="onChangeBusinessType" style="width:100%">
+                        <option value="wifi_general">常规业务</option>
+                        <option value="wifi_ce">ce认证</option>
+                        <option value="wifi_fcc">fcc认证</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-default btn-sm diy_return" style="float: right;"
+                        onclick="return_to_testcase()">返回
+                </button>
+                <div style="clear: both"></div>
+            </div>
+            <!--业务面板：通用测试-->
+            <div id="params_form_general" v-if="wifi_businesstype=='wifi_general'">
+
+                <div class="block-title">WIFI信号参数</div>
+                <div id="para_singnal_params">
+                    <vselector id="para_protocol" label="ge协议" options="11a,11b,11c,11n,11ac,11ax" size="sm" key="ce1"
+                               class="params_class"></vselector>
+                    <vselector id="para_band" label="频段" options="2.4G,5G" size="sm" key="ce2"
+                               class="params_class"></vselector>
+
+                    <vselector id="para_testmode" label="测试模式" options="SU,TriggerdBase,ER" size="sm" key="ce3"
+                               :callback="onChangeTestMode"
+                               class="params_class"></vselector>
+                    <vselector id="para_codingmode" label="Coding模式" options="BCC,LDPC" size="sm" key="ce4"
+                               class="params_class"></vselector>
+                    <vselector id="para_bandwidth" label="信道带宽" options="20MHz,40MHz,80MHz,160MHz" size="sm" key="ce5"
+                               class="params_class"></vselector>
+                    <vselector id="para_rate" label="速率"
+                               options="MCS0,MCS1,MCS2,MCS3,MCS4,MCS5,MCS6,MCS7,MCS8,MCS9,MCS10,MCS11" size="sm" key="ce6"
+                               class="params_class"></vselector>
+                </div>
+                <div style="clear: both;"></div>
+                <div class="block-title">测量参数</div>
+                <div id="para_measure_params">
+                    <vselector id="para_testitem" label="测试项目" options="Max output power,OBW,EVM"
+                               :callback="onChangeTestItem" size="sm" key="ce7" class="params_class"></vselector>
+                    <div style="clear: both;"></div>
+                    <div id="para_testitem_params" style="height: auto;">
+                        <!--测试项参数:Max output power-->
+                        <div id="para_testitem" v-if="testitem=='Max output power'">
+
+                            <vinput id="para_channel" label="信道" size="md" class="params_class"></vinput>
+                            <div style="clear: both;"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <!--业务面板：ce区-->
+            <div id="params_form_ce" v-if="wifi_businesstype=='wifi_ce'">
+                <div class="block-title">ce信号参数</div>
+                <input type="hidden" id="para_area" key="area_key" value="ce" class="params_class"/>
+                <input type="hidden" key="ce_country" id="para_country" size="sm" value="CE" class="params_class"/>
+                <vselector id="para_band" label="ce频段" options="2.4G,5G" size="sm" key="ce1" class="params_class"
+                           :callback="onChangeTestBand"></vselector>
+                <vselector id="para_protocol" label="ce协议" options="11ax,11a,11b,11c,11n,11ac,11ax" size="sm" key="ce2"
+                           class="params_class"></vselector>
+
+                <vselector id="para_testmode" label="ce测试模式" options="SU,TriggeredBase,ER" size="sm" key="ce3"
+                           class="params_class"></vselector>
+                <vselector id="para_codingmode" label="ce   Coding模式" options="BCC,LDPC" size="sm" key="ce4"
+                           class="params_class"></vselector>
+                <vselector id="para_bandwidth" label="ce   信道带宽" options="20MHz,40MHz,80MHz,160MHz" size="sm" key="ce5"
+                           class="params_class"></vselector>
+                <div v-if="testband=='2.4G'">
+                    <vinput id="para_channel" label="ce信道列表" value="1,2,3,4,5,6" size="sm" key="ce_channel16"
+                            class="params_class"></vinput>
+                </div>
+                <div v-if="testband=='5G'">
+                    <vinput id="para_channel" label="ce信道列表" value="36,64,100,140" size="sm" key="ce_channel6"
+                            class="params_class"></vinput>
+                </div>
+
+                <vselector id="para_rate" label="ce速率"
+                           options="MCS0,MCS1,MCS2,MCS3,MCS4,MCS5,MCS6,MCS7,MCS8,MCS9,MCS10,MCS11" size="sm" key="ce7"
+                           class="params_class"></vselector>
+                <vselector id="para_channel_estimation" label="ce信道估计" options="Full Packet,Row Long Symbols" size="sm"
+                           key="ce9" class="params_class"></vselector>
+                <vselector id="para_channel_singaling_mode" label="ce信令模式" options="Direct,NetWork" size="sm" key="ce10"
+                           class="params_class"></vselector>
+                <vselector id="para_ant" label="测量天线" options="Ant1,Ant2" size="sm" key='ce_dutycycle_ant'
+                           class='params_class'></vselector>
+                <div style="clear: both;"></div>
+                <div class="block-title">ce 测量参数</div>
+                <div v-if="testband=='2.4G'">
+                    <vselector id="para_testitem" label="ce测试项目"
+                               options="CE 2.4G Receive Emission,CE 2.4G Power Spectral Density(AV),CE 2.4G Occupied Channel Bandwidth,CE 2.4G Duty cycle,CE 2.4G Spurious Emissions,CE 2.4G OOB Emissions,CE 2.4G Receive Spurious Emissions"
+                               :callback="onChangeTestItem" size="sm" key="ce_testitem2g" class="params_class"></vselector>
+                </div>
+                <div v-if="testband=='5G'">
+                    <vselector id="para_testitem" label="ce测试项目"
+                               options="power,CE 5G Duty cycle,CE 5G8 Duty cycle,CE 5G Occupied Channel Bandwidth,CE 5G8 6dB Emission Bandwidth,CE 5G Power Spectral Density(AV),CE 5G8 Occupied Channel Bandwidth,CE 5G OutSide Spurious Emissions,CE 5G Within Bands Emissions,CE 5G8 Frequencies Range,CE 5G Carrier Frequencies,CE 5G Receive Spurious Emissions"
+                               :callback="onChangeTestItem" size="sm" key="ce_testitem5g" class="params_class"></vselector>
+                </div>
+
+                <div style="clear: both;"></div>
+
+
+                <div id="params_obw" v-if="testitem=='CE 2.4G Occupied Channel Bandwidth'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+
+                    <vinput id="para_spec_rbw" label="RBW" value="1% to 5% of the OBW" size="md" key='fcc_obw9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于等于3*RBW" size="md" key='fcc_obw10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='fcc_obw2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='fcc_obw3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key='fcc_obw7'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="1ms" size="md" key='fcc_obw4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep count" value="10" size="md" key='fcc_obw5'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="2*EBW" size="md" key='fcc_obw6'
+                            class='params_class'></vinput>
+                </div>
+
+                <div id="params_power_spectral_density" v-if="testitem=='CE 2.4G Power Spectral Density(AV)'">
+                    <!--                <vinput id="para_channel" label="信道" value="1,2,3,4,5,6" size="md" key='ce_psd1' class='params_class'></vinput>-->
+                    <vinput id="para_spec_rbw" label="RBW" value="1% to 5% of the OBW" size="md" key='ce_psd2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于等于3*RBW" size="md" key='ce_psd3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="2*EBW" size="md" key='ce_psd4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='ce_psd5'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_psd6'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep Time" value="AUTO" size="md" key='ce_psd7'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep Count" value="10" size="md" key='ce_psd77'
+                            class='params_class'></vinput>
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div class="block-title">PSD第二段测量参数</div>
+                    <vinput id="para_spec_final_rbw" label="Final RBW" value="1% to 5% of the OBW" size="md" key='ce_psd8'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_vbw" label="Final VBW" value="大于等于3*RBW" size="md" key='ce_psd9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_span" label="Final Span" value="3MHz" size="md" key='ce_psd10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_detector" label="Final DetectorMode" value="RMS" size="md" key='ce_psd11'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_trace" label="Final Tracemode" value="MAXH" size="md" key='ce_psd12'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_sweep_point" label="Final Sweep Point" value="30000" size="md"
+                            key='ce_psd122' class='params_class'></vinput>
+
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key='ce_psd13'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_sweep_time" label="Final Sweep time" value="60s" size="md" key='ce_psd14'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_sweep_count" label="Final Sweep count" value="1" size="md" key='ce_psd15'
+                            class='params_class'></vinput>
+                    <!--占空比参数-->
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div class="block-title">占空比部分测量参数</div>
+                    <vinput id="para_spec_duty_cycle_rbw" label="RBW" value="10MHz" size="md" key="ce_psd16"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_vbw" label="VBW" value="10MHz" size="md" key="ce_psd17"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_detector" label="DetectorMode" value="POS" size="md" key="ce_psd18"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_trace" label="Tracemode" value="WRIT" size="md" key="ce_psd19"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_ref_level" label="Reference level" value="30" size="md" key="ce_psd20"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_span" label="Span" value="0" size="md" class='params_class'
+                            key='ce_psd22'></vinput>
+
+                </div>
+                <div id="params_5g_power_spectral_density" v-if="testitem=='CE 5G Power Spectral Density(AV)'">
+
+                    <vinput id="para_spec_rbw" label="RBW" value="1% to 5% of the OBW" size="md" key='ce_5g_psd2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于等于3*RBW" size="md" key='ce_5g_psd3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="2*EBW" size="md" key='ce_5g_psd4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='ce_5g_psd5'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_5g_psd6'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep Time" value="AUTO" size="md" key='ce_5g_psd7'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep Count" value="10" size="md" key='ce_5g_psd77'
+                            class='params_class'></vinput>
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div class="block-title">PSD第二段测量参数</div>
+                    <vinput id="para_spec_final_rbw" label="Final RBW" value="1% to 5% of the OBW" size="md"
+                            key='ce_5g_psd8' class='params_class'></vinput>
+                    <vinput id="para_spec_final_vbw" label="Final VBW" value="大于等于3*RBW" size="md" key='ce_5g_psd9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_span" label="Final Span" value="3MHz" size="md" key='ce_5g_psd10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_detector" label="Final DetectorMode" value="RMS" size="md" key='ce_5g_psd11'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_trace" label="Final Tracemode" value="MAXH" size="md" key='ce_5g_psd12'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_sweep_point" label="Final Sweep Point" value="30000" size="md"
+                            key='ce_5g_psd122' class='params_class'></vinput>
+
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key='ce_5g_psd13'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_sweep_time" label="Final Sweep time" value="60s" size="md" key='ce_5g_psd14'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_final_sweep_count" label="Final Sweep count" value="1" size="md" key='ce_5g_psd15'
+                            class='params_class'></vinput>
+                    <!--占空比参数-->
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div class="block-title">占空比部分测量参数</div>
+                    <vinput id="para_spec_duty_cycle_rbw" label="RBW" value="10MHz" size="md" key="ce_5g_psd16"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_vbw" label="VBW" value="10MHz" size="md" key="ce_5g_psd17"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_detector" label="DetectorMode" value="POS" size="md" key="ce_5g_psd18"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_trace" label="Tracemode" value="WRIT" size="md" key="ce_5g_psd19"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_ref_level" label="Reference level" value="30" size="md"
+                            key="ce_5g_psd20" class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_span" label="Span" value="0" size="md" class='params_class'
+                            key='ce_5g_psd22'></vinput>
+
+                </div>
+
+                <div id="params_duty_cycle" v-if="testitem=='CE 2.4G Duty cycle'">
+                    <!--                <vinput id="para_channel" label="信道"  value="1,2,3" size="sm"  key="ce_duty_cycle1" class='params_class'></vinput>-->
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW" value="10MHz" size="md" key="ce_duty_cycle2"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="10MHz" size="md" key="ce_duty_cycle3"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key="ce_duty_cycle4"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="WRIT" size="md" key="ce_duty_cycle5"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key="ce_duty_cycle6"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep count" value="150ms" size="md" key="ce_duty_cycle7"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="0" size="md" class='params_class'
+                            key='ce_duty_cycle8'></vinput>
+                </div>
+
+
+                <div id="params_spurious_emission" v-if="testitem=='CE 2.4G Spurious Emissions'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <!--                <vinput id="para_channel" label="信道"  value="1,2,3" size="md"  key="ce_emiss_ch" class='params_class'></vinput>-->
+                    <vinput id="para_spec_rbw" label="RBW" value="30Mhz-1Ghz(100k),1G-12.75(1M)" size="md" key='ce_emiss9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于等于3*RBW" size="md" key='ce_emiss10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='ce_emiss2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_emiss3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="60s" size="md" key='ce_emiss4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_point" label="Sweep point" value="30000" size="md" key='ce_emiss4'
+                            class='params_class'></vinput>
+
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div class="block-title">占用带宽部分测量参数</div>
+                    <vinput id="para_spec_obw_rbw" label="RBW" value=" 1 % of the span without going below 1 %" size="md"
+                            key='ce_emmiss_obw9' class='params_class'></vinput>
+                    <vinput id="para_spec_obw_vbw" label="VBW" value="大于等于3*RBW" size="md" key='ce_emmiss_obw10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_detector" label="DetectorMode" value="RMS" size="md" key='ce_emmiss_obw2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_trace" label="Tracemode" value="MAXH" size="md" key='ce_emmiss_obw3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_ref_level" label="Reference level" value="30" size="md" key='ce_emmiss_obw7'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_sweep_time" label="Sweep time" value="1s" size="md" key='ce_emmiss_obw4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_sweep_point" label="Sweep point" value="30000" size="md" key='ce_emmiss_obw15'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_sweep_count" label="Sweep count" value="10" size="md" key='ce_emmiss_obw5'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_span" label="Span" value="2*EBW" size="md" key='ce_emmiss_obw6'
+                            class='params_class'></vinput>
+
+                </div>
+
+                <div id="params_oob_spurious_emission" v-if="testitem=='CE 2.4G OOB Emissions'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <!--                <vinput id="para_channel" label="信道"  value="1,2,3" size="md"  key="ce_oob_ch" class='params_class'></vinput>-->
+                    <vinput id="para_spec_rbw" label="RBW--" value="1MHz" size="md" key='ce_oob9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="3MHz" size="md" key='ce_oob10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="RMS" size="md" key='ce_oob2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_oob3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="60s" size="md" key='ce_oob4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_point" label="Sweep point" value="30000" size="md" key='ce_oob4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="2*EBW" size="md" key='ce_oob16'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key='ce_oob_obw7'
+                            class='params_class'></vinput>
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div class="block-title">占用带宽部分测量参数</div>
+                    <vinput id="para_spec_obw_rbw" label="RBW" value=" 1 % of the span without going below 1 %" size="md"
+                            key='ce_emmiss_obw9' class='params_class'></vinput>
+                    <vinput id="para_spec_obw_vbw" label="VBW" value="大于等于3*RBW" size="md" key='ce_oob_obw10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_detector" label="DetectorMode" value="RMS" size="md" key='ce_oob_obw2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_trace" label="Tracemode" value="MAXH" size="md" key='ce_oob_obw3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_ref_level" label="Reference level" value="30" size="md" key='ce_oob_obw7'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_sweep_time" label="Sweep time" value="1s" size="md" key='ce_oob_obw4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_sweep_point" label="Sweep point" value="30000" size="md" key='ce_oob_obw15'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_sweep_count" label="Sweep count" value="10" size="md" key='ce_oob_obw5'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_obw_span" label="Span" value="2*EBW" size="md" key='ce_oob_obw6'
+                            class='params_class'></vinput>
+                </div>
+
+                <div id="params_receive_spurious_emission" v-if="testitem=='CE 2.4G Receive Spurious Emissions'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW" value="30MHz~1GHz(100khz) 1GHz~12.75GHz(1MHz)" size="md"
+                            key='ce_rx_9' class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于3*RBW" size="md" key='ce_rx_10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='ce_rx_2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_rx_3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="AUTO" size="md" key='ce_rx_4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_point" label="Sweep Point" value="30000" size="md" key='ce_rx_4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep Count" value="100" size="md" key='ce_rx_4'
+                            class='params_class'></vinput>
+                </div>
+
+
+                <div id="params_5g_duty_cycle" v-if="testitem=='CE 5G Duty cycle'">
+                    <!--                <vinput id="para_channel" label="信道"  value="1,2,3" size="sm"  key="ce_5g_duty_cycle1" class='params_class'></vinput>-->
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW" value="10MHz" size="md" key="ce_5g_duty_cycle2"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="10MHz" size="md" key="ce_5g_duty_cycle3"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key="ce_5g_duty_cycle4"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="WRIT" size="md" key="ce_5g_duty_cycle5"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md"
+                            key="ce_5g_duty_cycle6" class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep count" value="150ms" size="md" key="ce_5g_duty_cycle7"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="0" size="md" class='params_class'
+                            key='ce_5g_duty_cycle8'></vinput>
+                </div>
+                <div id="params_5g8_duty_cycle" v-if="testitem=='CE 5G8 Duty cycle'">
+                    <!--                <vinput id="para_channel" label="信道"  value="1,2,3" size="sm"  key="ce_5g_duty_cycle1" class='params_class'></vinput>-->
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW" value="10MHz" size="md" key="ce_5g8_duty_cycle2"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="10MHz" size="md" key="ce_5g8_duty_cycle3"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key="ce_5g8_duty_cycle4"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="WRIT" size="md" key="ce_5g8_duty_cycle5"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md"
+                            key="ce_5g8_duty_cycle6" class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep count" value="150ms" size="md" key="ce_5g8_duty_cycle7"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="0" size="md" class='params_class'
+                            key='ce_5g8_duty_cycle8'></vinput>
+                </div>
+
+
+                <div id="params_5g_obw" v-if="testitem=='CE 5G Occupied Channel Bandwidth'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+
+                    <vinput id="para_spec_rbw" label="RBW" value="100khz" size="md" key='ce_5g_obw9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="300khz" size="md" key='ce_5g_obw10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="RMS" size="md" key='ce_5g_obw2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_5g_obw3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key='ce_5g_obw7'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="1s" size="md" key='ce_5g_obw4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep count" value="10" size="md" key='ce_5g_obw5'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="2*EBW" size="md" key='ce_5g_obw6'
+                            class='params_class'></vinput>
+                </div>
+
+                <div id="params_5g8_obw" v-if="testitem=='CE 5G8 Occupied Channel Bandwidth'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+
+                    <vinput id="para_spec_rbw" label="RBW" value="1% to 5% of the OBW" size="md" key='ce_5g8_obw9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于等于3*RBW" size="md" key='ce_5g8_obw10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='ce_5g8_obw2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_5g8_obw3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key='ce_5g8_obw7'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="1s" size="md" key='ce_5g8_obw4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep count" value="10" size="md" key='ce_5g8_obw5'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="1.5*EBW" size="md" key='ce_5g8_obw6'
+                            class='params_class'></vinput>
+                </div>
+
+                <div id="params_5g8_6dB" v-if="testitem=='CE 5G8 6dB Emission Bandwidth'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+
+                    <vinput id="para_spec_rbw" label="RBW" value="100khz" size="md" key='ce_5g8_6dB9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="300khz" size="md" key='ce_5g8_6dB10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='ce_5g8_6dB2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_5g8_6dB3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key='ce_5g8_6dB7'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="AUTO" size="md" key='ce_5g8_6dB4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep count" value="100" size="md" key='ce_5g8_6dB5'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="1.5*EBW" size="md" key='ce_5g8_6dB6'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_point" label="Sweep point" value="30000" size="md" key='ce_5g8_6db15'
+                            class='params_class'></vinput>
+                </div>
+
+                <div id="params_5g_oob_spurious_emission" v-if="testitem=='CE 5G Within Bands Emissions'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <!--                                <vinput id="para_channel" label="信道"  value="1,2,3" size="md"  key="ce_5g_oob_ch" class='params_class'></vinput>-->
+                    <vinput id="para_spec_start_fre" label="频率起点" value="5150" size="md" key='ce_5g_oob11'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_stop_fre" label="频率终点" value="5725" size="md" key='ce_5g_oob12'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_rbw" label="RBW" value="1MHz" size="md" key='ce_5g_oob9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="30khz" size="md" key='ce_5g_oob10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="3*EBW" size="md" key='ce_5g_oob29'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="RMS" size="md" key='ce_5g_oob2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_5g_oob3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="60s" size="md" key='ce_5g_oob4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_point" label="Sweep point" value="30000" size="md" key='ce_5g_oob14'
+                            class='params_class'></vinput>
+
+                </div>
+                <div id="params_5g_outside_emission" v-if="testitem=='CE 5G OutSide Spurious Emissions'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW" value="30Mhz-1Ghz(100k),1G-12.75(1M)" size="md"
+                            key='outside_emission9' class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于等于3*RBW" size="md" key='outside_emission10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='outside_emission2'
+                            class='ce_params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='outside_emission3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="60s" size="md" key='outside_emission4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_point" label="Sweep point" value="30000" size="md" key='outside_emission14'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="0" size="md"
+                            key='outside_emission84' class='params_class'></vinput>
+                </div>
+                <div id="params_5g_receive_spurious_emission" v-if="testitem=='CE 5G Receive Spurious Emissions'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW--" value="30MHz~1GHz(100khz) 1GHz~12.75GHz(1MHz)" size="md"
+                            key='ce_5g_rx_9' class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于3*RBW" size="md" key='ce_5g_rx_10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='ce_5g_rx_2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_5g_rx_3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="AUTO" size="md" key='ce_5g_rx_44'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_point" label="Sweep Point" value="30000" size="md" key='ce_5g_rx_24'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep Count" value="100" size="md" key='ce_5g_rx_4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key="ce_5g_rx16"
+                            class='params_class'></vinput>
+                </div>
+
+                <div id="params_5g_carrier_frequences" v-if="testitem=='CE 5G Carrier Frequencies'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW--" value="10khz" size="md" key='ce_5g_carrier_fre_9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="30khz" size="md" key='ce_5g_carrier_fre_10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='ce_5g_carrier_fre_2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_5g_carrier_fre_3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="1s" size="md" key='ce_5g_carrier_fre_4'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_point" label="Sweep Point" value="30000" size="md"
+                            key='ce_5g_carrier_fre_24' class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep Count" value="5" size="md" key='ce_5g_carrier_fre_14'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md"
+                            key="ce_5g_carrier_fre16" class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="2*EBW" size="md" key="ce_5g_carrier_fre26"
+                            class='params_class'></vinput>
+                </div>
+
+
+                <div id="params_5g8_carrier_frequences" v-if="testitem=='CE 5G8 Frequencies Range'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW--" value="30khz" size="md" key='ce_5g8_fre_range_9'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="100khz" size="md" key='ce_5g8_fre_range_10'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='ce_5g8_fre_range_2'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='ce_5g8_fre_range_3'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="1s" size="md" key='ce_5g8_fre_range_34'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_point" label="Sweep Point" value="30000" size="md" key='ce_5g8_fre_range_24'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep Count" value="5" size="md" key='ce_5g8_fre_range_14'
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md"
+                            key="ce_5g8_fre_range16" class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="2*EBW" size="md" key="ce_5g8_fre_range17"
+                            class='params_class'></vinput>
+                </div>
+            </div>
+            <!--业务面板：FCC-->
+            <div id="params_fcc" v-if="wifi_businesstype=='wifi_fcc'">
+
+                <div class="block-title">fcc信号参数</div>
+                <input type="hidden" id="para_area" key="fcc_area_key" value="fcc" class="params_class"/>
+                <input type="hidden" key="fcc_country_key" id="para_country" size="sm" value="FCC" class="params_class"/>
+                <!--<vselector id="para_band" label="fcc频段" options="2.4G,5G"  key="fcc1" size="sm" class="params_class"-->
+                <!--:callback="onChangeTestBand"></vselector>-->
+                <div style="width: 400px;margin: 10px;height: auto;float:left;">
+                    <select id="para_band" class="easyui-combobox params_class" label="fcc频段" labelWidth="120px" v-model="testband"
+                            panelHeight="auto" :onChange="onChangeTestBand" style="width:100%">
+                        <option value="2.4G">2.4G</option>
+                        <option value="5G">5G</option>
+                    </select>
+                </div>
+                <div style="width: 400px;margin: 10px;height: auto;float:left;">
+                    <select id="para_protocol" class="easyui-combobox params_class" label="fcc协议" labelWidth="120px" v-model="protocol"
+                            panelHeight="auto" :onChange="onChangeTestBand" style="width:100%">
+                        <option value="11ax">11ax</option>
+                        <option value="11b">11b</option>
+                        <option value="11a">11a</option>
+                        <option value="11g">11g</option>
+                        <option value="11n">11n</option>
+                        <option value="11ac">11ac</option>
+                    </select>
+                </div>
+                <!--<vselector id="para_protocol" label="fcc协议" options="11ax,11a,11b,11c,11n,11ac,11ax" size="sm" key="fcc2" v-model="protocol"-->
+                <!--class="params_class"></vselector>-->
+                <div style="width: 400px;margin: 10px;height: auto;float:left;">
+                    <select id="para_testmode" class="easyui-combobox params_class" label="fcc测试模式" labelWidth="120px" v-model="testmode"
+                            panelHeight="auto" :onChange="onChangeTestMode" style="width:100%">
+                        <option value="SU">SU</option>
+                        <option value="TriggeredBase">TriggeredBase</option>
+                        <option value="ER">ER</option>
+                    </select>
+                </div>
+                <!--<vselector id="para_testmode" label="fcc测试模式" options="SU,TriggeredBase,ER" size="sm" key="fcc3"-->
+                <!--class="params_class"></vselector>-->
+                <div style="width: 400px;margin: 10px;height: auto;float:left;">
+                    <select id="para_codingmode" class="easyui-combobox params_class" label="fcc测试模式" labelWidth="120px" v-model="codingtype"
+                            panelHeight="auto" :onChange="onChangeTestBand" style="width:100%">
+                        <option value="BCC">BCC</option>
+                        <option value="LDPC">LDPC</option>
+                    </select>
+                </div>
+                <!--<vselector id="para_codingmode" label="fcc   Coding模式" options="BCC,LDPC" size="sm" key="fcc4"-->
+                <!--class="params_class"></vselector>-->
+                <div style="width: 400px;margin: 10px;height: auto;float:left;">
+                    <select id="para_bandwidth" class="easyui-combobox params_class" label="fcc   信道带宽" labelWidth="120px" v-model="bandwidth"
+                            panelHeight="auto" :onChange="onChangeTestBandWidth" style="width:100%">
+                        <option value="20MHz">20MHz</option>
+                        <option value="40MHz">40MHz</option>
+                        <option value="80MHz">80MHz</option>
+                        <option value="160MHz">160MHz</option>
+                    </select>
+                </div>
+                <!--<vselector id="para_bandwidth" label="fcc   信道带宽" options="20MHz,40MHz,80MHz,160MHz" size="sm" key="fcc5"-->
+                <!--class="params_class"></vselector>-->
+                <div style="width: 400px;margin: 10px;height: auto;float:left;">
+                    <select id="para_rate" class="easyui-combobox params_class" label="fcc速率" labelWidth="120px" v-model="rate"
+                            panelHeight="auto"   style="width:100%">
+                        <option value="MCS0">MCS0</option>
+                        <option value="MCS1">MCS1</option>
+                        <option value="MCS2">MCS2</option>
+                        <option value="MCS3">MCS3</option>
+                        <option value="MCS4">MCS4</option>
+                        <option value="MCS5">MCS5</option>
+                        <option value="MCS6">MCS6</option>
+                        <option value="MCS7">MCS7</option>
+                        <option value="MCS8">MCS8</option>
+                        <option value="MCS9">MCS9</option>
+                        <option value="MCS10">MCS10</option>
+                        <option value="MCS11">MCS11</option>
+                    </select>
+                </div>
+
+                <!--<vselector id="para_rate" label="fcc速率"-->
+                <!--options="MCS0,MCS1,MCS2,MCS3,MCS4,MCS5,MCS6,MCS7,MCS8,MCS9,MCS10,MCS11" size="sm" key="fcc77"-->
+                <!--class="params_class"></vselector>-->
+
+                <div v-if="testband=='2.4G'" >
+                    <vinput id="para_channel" label="ce信道列表" value="1,2,3,4,5,6" size="sm" key="fcc_channel16" v-model="channel"
+                            class="params_class"></vinput>
+                </div>
+                <div v-if="testband=='5G'">
+                    <vinput id="para_channel" label="ce信道列表" value="36,64,100,140" size="sm" key="fcc_channel6" v-model="channel"
+                            class="params_class"></vinput>
+                </div>
+                <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                <div class="block-title"> 测量参数</div>
+
+                <div v-if="testband=='2.4G'">
+                    <vselector id="para_testitem" label="测试项目" options="FCC 2.4G Duty Cycl,FCC 2.4G DTS 6db bandwidth,FCC 2.4G Unwanted Spurious Emissions,FCC 2.4G Band Edge,FCC 2.4G Power spectral density(AV),FCC 2.4G conducted output power(AV)" :callback="onChangeTestItem" size="sm" key="fcc2g09" class='params_class' v-model="testitem"></vselector>
+                </div>
+                <div v-if="testband=='5G'">
+                    <vselector id="para_testitem" label="测试项目"
+                               options="FCC 5G DTS 6db bandwidth,FCC 5G DTS 26db bandwidth,FCC 5G Band Edge,FCC 5G Power spectral density(AV),FCC 5G conducted output power(AV)"
+                               :callback="onChangeTestItem" size="sm" key="fcc5g09" class='params_class'  value="testitem"></vselector>
+                </div>
+                <div id="params_fcc_duty_cycle" v-if="testitem=='FCC 2.4G Duty Cycl'">
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW" value="10M" size="md" key="fcc2" class='params_class' v-model="spec_rbw"></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="10M" size="md" key="fcc3" class='params_class' v-model="spec_vbw"></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key="fcc4" class='params_class' v-model="spec_detector"></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="WRIT" size="md" key="fcc5" class='params_class' v-model="spec_trace"></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key="fcc6" class='params_class' v-model="spec_reference_level"></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep count" value="150ms" size="md" key="fcc7" class='params_class' v-model="spec_sweep_time"></vinput>
+                    <vinput id="para_spec_span" label="Span" value="0" size="md" class='params_class' v-model="spec_span"></vinput>
+                </div>
+                <div style="clear: both;"></div><!--清除浮动效果 换行-->
+
+
+                <div id="params_fcc_obw" v-if="testitem=='2.4G Occupied Channel Bandwidth'">
+
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW" value="1% to 5% of the OBW" size="md" key='fcc_obw9' class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于等于3*RBW" size="md" key='fcc_obw10' class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="POS" size="md" key='fcc_obw2' class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="MAXH" size="md" key='fcc_obw3' class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="30" size="md" key='fcc_obw7' class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="1ms" size="md" key='fcc_obw4' class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep count" value="10" size="md" key='fcc_obw5' class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="2*EBW" size="md" key='fcc_obw6' class='params_class'></vinput>
+                </div>
+
+
+                <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                <div id="params_fcc_power" v-if="testitem=='FCC 2.4G conducted output power(AV)'">
+
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <vinput id="para_spec_rbw" label="RBW" value="1% to 5% of the OBW, not to exceed 1 MHz," size="md"
+                            key='fcc_power1' class='params_class'></vinput>
+                    <vinput id="para_spec_vbw" label="VBW" value="大于等于3*RBW" size="md" key='fcc_power2' class='params_class'></vinput>
+                    <vinput id="para_spec_detector" label="DetectorMode" value="RMS" size="md" key='fcc_power3' class='params_class'></vinput>
+                    <vinput id="para_spec_trace" label="Tracemode" value="AVER" size="md" key='fcc_power4' class='params_class'></vinput>
+                    <vinput id="para_spec_reference_level" label="Reference level" value="20" size="md" key='fcc_power5' class='params_class'></vinput>
+                    <vinput id="para_spec_span" label="Span" value="2*EBW" size="md" key='fcc_power6' class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_time" label="Sweep time" value="1ms" size="md" key='fcc_power7' class='params_class'></vinput>
+                    <vinput id="para_spec_sweep_count" label="Sweep count" value="100" size="md" key='fcc_power8' class='params_class'></vinput>
+                    <vinput id="para_sweep_point" label="Sweep point" value="10001" size="md" key='fcc_power9' class='params_class'></vinput>
+
+                    <vinput id="para_conduct_power_limit" label="power imit" value="30" size="md"
+                            key='fcc_power10' class='params_class'></vinput>
+                    <vinput id="para_eirp_power_limit" label="Eirp imit" value="36" size="md" key='fcc_power11' class='params_class'></vinput>
+                    <vselector id="para_ant" label="测量天线" options="Ant1,Ant2" size="sm" key='fcc_output_ant22'  class='params_class'></vselector>
+
+                    <!--占空比参数-->
+                    <div style="clear: both;"></div><!--清除浮动效果 换行-->
+                    <div class="block-title">占空比部分测量参数</div>
+                    <vinput id="para_spec_duty_cycle_rbw" label="RBW" value="10MHz" size="md" key="fcc_output_duty_cycle_psd16"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_vbw" label="VBW" value="10MHz" size="md" key="fcc_output_duty_cycle_psd17"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_detector" label="DetectorMode" value="POS" size="md" key="fcc_output_duty_cycle_psd18"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_trace" label="Tracemode" value="WRIT" size="md" key="fcc_output_duty_cycle_psd19"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_ref_level" label="Reference level" value="30" size="md" key="fcc_output_duty_cycle_psd20"
+                            class='params_class'></vinput>
+                    <vinput id="para_spec_duty_cycle_span" label="Span" value="0" size="md" class='params_class'
+                            key='fcc_output_duty_cycle_psd22'></vinput>
+
+                </div>
+
+
+
+                <div>
+                    <div style="float:right;margin-bottom: 10px">
+                        <a id='start1' class="btn btn-success btn-sm" href="#" role="button" onclick="onClickUpdateTestcase()"
+                           style="margin-top: 26px;margin-left:10px;float: right">更新用例</a>
+                        <a id='start2' class="btn btn-success btn-sm" href="#" role="button" onclick="onClickCreateTestcase()"
+                           style="margin-top: 26px;margin-left:10px;float: right">生成用例</a>
+                    </div>
+                    <div style="clear: both;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!--VUE初始化-->
+<script type="text/javascript">
+    var vm = new Vue({
+        el: '#app',
+        data: function () {
+            return {
+                showtype:'',
+                //信号参数相关
+                testband: '',
+                bandwidth: '',
+                testmode: '',
+                testitem: '',
+                protocol:'',
+                rate:'',
+                codingtype:'',
+                wifi_businesstype: '',
+                channel:'',
+                //测量参数相关
+                spec_rbw:'',
+                spec_vbw:'',
+                spec_detector:'',
+                spec_trace:'',
+                spec_reference_level:'',
+                spec_sweep_time:'',
+                spec_span:'',
+
+            }
+        },
+        created:function(){
+            this.getShowType();
+            this.onLoadFormData(this);
+
+        },
+        mounted: function () {
+            $("#wifi_businesstype").combobox({
+                onChange: this.onChangeBusinessType
+            });
+        },
+        methods: {
+            onChangeBusinessType: function (val1, val2) {
+                this.wifi_businesstype = val1;
+                // this.resetData(this);
+            },
+            onChangeTestItem: function (val1, val2) {
+
+                this.testitem = val1;
+            },
+            onChangeTestMode: function (val1, val2) {
+                this.testmode = val1
+            },
+            onChangeTestBandWidth: function (val1, val2) {
+                this.bandwidth = val1
+            },
+            onChangeTestBand: function (val1, val2) {
+                this.testband = val1
+            },
+            onLoadFormData: function(vueObj){
+                // uuid = getUrlQueryPara("uuid");
+                uuid = "a483b53fcdf044ba9285a4309b3eb47d";
+                if (uuid==null)return false;//说明是新增
+                var url = "/testcase/getTestcaseDetails";
+                var paras = new Object();
+                paras["uuid"] = uuid;
+                $.ajax({
+                    url: contextpath + '/testcase/getTestcaseDetails',
+                    cache: false,
+                    async: false,
+                    data: {
+                        "uuid":uuid
+                    },
+                    dataType: 'json',
+                    success: function (result) {
+                        // testconfig = result.data.TestConfig[0];
+                        testconfig = JSON.parse(result.data.TestConfig).TestConfig;
+                        for (var i in testconfig){
+                            for (var key  in vueObj._data){//遍历vue data的key
+                                if (i==key){
+                                    vueObj._data[key]=testconfig[i]
+                                }
+                            }
+                        }
+                    }
+                });
+
+
+            },
+            getShowType:function(){
+
+            },
+            resetData:function(vueObj){
+                debugger;
+                for (var key  in vueObj._data){//遍历vue data的key
+                        vueObj._data[key]= ''
+
+                }
+            }
+
+
+        }
+    });
+
+    function onClickCreateTestcase() {
+
+        testcaseWin(true, null);
+    }
+
+    function onClickUpdateTestcase() {//更新用例
+        uuid = getUrlQueryPara("uuid");
+        if (uuid == undefined || uuid.length == 0) {
+            $.messager.alert('消息', '用例不存在，无法更新', 'error');
+            return;
+        } else {
+            onDialogSubmitCreateTestcase(new Object(), 'update');
+        }
+    }
+
+    function onDialogSubmitCreateTestcase(paras, createOrUpdate) {//创建更新用例
+
+        _$params = $(".params_class");
+        _$params.each(function (i, o) {
+            if ("div".indexOf(o.tagName.toLowerCase()) > -1) {
+                domId = $(o).find("input,select").attr("id").replace("para_", "");
+                domVal = $(o).find("input,select").val();
+                paras[domId] = domVal;
+            } else {
+                domId = $(o).attr("id").replace("para_", "");
+                domVal = $(o).val();
+                paras[domId] = domVal
+            }
+        });
+        var testitem = paras['testitem'];
+        if (testitem.trim() == "") {
+            $.messager.alert({
+                title: '消息',
+                msg: '错误:' + test_item_flag + '测试项目不能为空',
+                icon: 'info',
+                top: $(window).height() / 5
+            });
+            return;
+        }
+        paras["organization"] = getUrlQueryPara("organization");
+        var url = "/Foreign/wifiexecutor/wifi/createTestcase";
+        (createOrUpdate == 'create') && (url = "/Foreign/wifiexecutor/wifi/createTestcase");
+        (createOrUpdate == 'update') && (url = url = "/Foreign/wifiexecutor/wifi/updateTestcase") && (paras['uuid'] = uuid);
+
+        if (testitem != undefined && testitem != null &&( testitem.toString().toLowerCase().indexOf("spurious emission") > -1)||
+            ( testitem.toString().toLowerCase().indexOf("band edge") > -1)||
+            ( testitem.toString().toLowerCase().indexOf("band compliance") > -1)
+        ) {
+            var table_name = "Wifi_Spurious_Emissions";
+            var area = $("#para_area").val();
+            var excel_testitem = testitem; // area.toUpperCase() + " " + testitem
+            emission_url = "/table/queryTableData";
+            emission_params = new Object();
+            emission_params["businessType"] = "wifi";
+            emission_params["tableName"] = table_name;
+            emission_params["queryCriteria"] = "";
+
+            ajaxRequest(emission_url, emission_params, function (emission_result) {
+                if (emission_result != null) {
+                    var arr = $.grep(emission_result, function (n, i) {
+                        return n["测试用例"] == excel_testitem;
+                    });
+                    debugger;
+                    paras["mesureConfig"] = JSON.stringify(arr);
+                    ajaxRequest(url, paras, function (result) {
+                        if (result.success) {
+                            $.messager.alert('消息', '创建用例成功', 'info');
+                        } else {
+                            $.messager.alert('消息', result.message, 'error');
+                        }
+                    }, true);
+                } else {
+                    $.messager.alert('消息', "创建杂散项目失败，请先在协议配置处上传杂散限值规格表", 'error');
+                }
+            }, true);
+        } else {
+            ajaxRequest(url, paras, function (result) {
+                if (result.success) {
+                    $.messager.alert('消息', '创建用例成功', 'info');
+                } else {
+                    $.messager.alert('消息', result.message, 'error');
+                }
+            }, true);
+        }
+
+    }
+
+
+</script>
+
+</body>
+</html>

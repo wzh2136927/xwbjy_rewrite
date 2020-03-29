@@ -22,6 +22,7 @@ public class ActionResult {
         r.setSuccess(ResultCodeEnum.SUCCESS.getSuccess());
         r.setCode(ResultCodeEnum.SUCCESS.getCode());
         r.setMessage(ResultCodeEnum.SUCCESS.getMessage());
+        System.out.println(1121);
         return r;
     }
 
